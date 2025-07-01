@@ -59,20 +59,16 @@ try:
     # Cargar datos desde Google Sheets
     df = pd.read_csv(url)
     
+    # Mostrar los nombres de columnas reales para diagnóstico (puedes comentar esto después)
+    st.write("Columnas encontradas en el archivo:", df.columns.tolist())
+    
     # Limpiar nombres de columnas
     df.columns = df.columns.str.strip()
     
-    # Renombrar columnas para consistencia
-    df = df.rename(columns={
-        "Nombre de agenda celular": "CONTACTO",
-        "GRUPO DE WPP": "GRUPO",
-        "RECIBE": "CONFIRMADO"
-    })
-    
     # Verificar si existe la columna esperada
-    if "CONFIRMADO" in df.columns:
+    if "RECIBE" in df.columns:
         # Convertir a valores booleanos (TRUE/FALSE a Si/No)
-        df["CONFIRMADO"] = df["CONFIRMADO"].astype(str).str.strip().str.lower()
+        df["CONFIRMADO"] = df["RECIBE"].astype(str).str.strip().str.lower()
         df["CONFIRMADO"] = df["CONFIRMADO"].map({'true': 'si', 'false': 'no'}).fillna('no')
         
         # Calcular métricas
@@ -128,44 +124,50 @@ try:
         with st.expander("🔍 Ver listado detallado", expanded=False):
             tabs = st.tabs(["🚫 Pendientes", "✅ Confirmados", "📋 Todos"])
             
+            # Usar los nombres de columnas originales
+            columna_nombre = [c for c in df.columns if "NOMBRE" in c.upper() or "CONTACTO" in c.upper() or "CELULAR" in c.upper()][0]
+            columna_grupo = [c for c in df.columns if "GRUPO" in c.upper() or "WPP" in c.upper()][0]
+            
             with tabs[0]:
                 st.dataframe(
-                    df[df["CONFIRMADO"] != "si"][["CONTACTO", "GRUPO", "CONFIRMADO"]],
+                    df[df["CONFIRMADO"] != "si"][[columna_nombre, columna_grupo, "CONFIRMADO"]],
                     use_container_width=True,
                     height=300,
                     column_config={
-                        "CONTACTO": "Contacto",
-                        "GRUPO": "Grupo WhatsApp",
+                        columna_nombre: "Contacto",
+                        columna_grupo: "Grupo WhatsApp",
                         "CONFIRMADO": "Confirmado"
                     }
                 )
             
             with tabs[1]:
                 st.dataframe(
-                    df[df["CONFIRMADO"] == "si"][["CONTACTO", "GRUPO", "CONFIRMADO"]],
+                    df[df["CONFIRMADO"] == "si"][[columna_nombre, columna_grupo, "CONFIRMADO"]],
                     use_container_width=True,
                     height=300,
                     column_config={
-                        "CONTACTO": "Contacto",
-                        "GRUPO": "Grupo WhatsApp",
+                        columna_nombre: "Contacto",
+                        columna_grupo: "Grupo WhatsApp",
                         "CONFIRMADO": "Confirmado"
                     }
                 )
             
             with tabs[2]:
                 st.dataframe(
-                    df[["CONTACTO", "GRUPO", "CONFIRMADO"]],
+                    df[[columna_nombre, columna_grupo, "CONFIRMADO"]],
                     use_container_width=True,
                     height=300,
                     column_config={
-                        "CONTACTO": "Contacto",
-                        "GRUPO": "Grupo WhatsApp",
+                        columna_nombre: "Contacto",
+                        columna_grupo: "Grupo WhatsApp",
                         "CONFIRMADO": "Confirmado"
                     }
                 )
     else:
-        st.error("La columna 'RECIBE' no se encontró en la hoja de cálculo. Verifica que el nombre de la columna sea correcto.")
+        st.error("No se encontró la columna 'RECIBE' en la hoja de cálculo. Columnas disponibles: " + ", ".join(df.columns))
         
 except Exception as e:
     st.error(f"⚠️ Error al cargar los datos: {str(e)}")
-    st.info("Asegúrate de que la hoja de Google Sheets esté compartida públicamente o con acceso para cualquier persona con el enlace.")
+    st.info("Asegúrate de que:")
+    st.info("1. La hoja de Google Sheets esté compartida públicamente (opción 'Cualquier persona con el enlace')")
+    st.info("2. El nombre de las columnas sea correcto (debe haber una columna 'RECIBE' con valores TRUE/FALSE)")
